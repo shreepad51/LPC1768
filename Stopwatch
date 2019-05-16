@@ -1,0 +1,102 @@
+//Code is created by Madhavai 
+
+
+#include"lpc17xx.h"
+#include"lcd.h"
+void DisplayTimeToLCD( unsigned int h, unsigned int m, unsigned int s );
+void timer_init();
+void timer_delay(void);
+unsigned int sec = 0;
+unsigned int min = 0 , hour = 0;
+unsigned int flag=0;
+void counter(void);
+
+void timer_init(void){
+	LPC_SC->PCON = (1<<1);
+	LPC_SC->PCLKSEL0 = (1<<2);
+	LPC_TIM0->MCR = (1<<1);//rsest m0
+	LPC_TIM0->PR = 60000; //maximum count
+	LPC_TIM0->MR0 =1525;  //reset on match
+}
+void timer_delay(void)
+{
+	LPC_TIM0->TCR = (1<<0); //enable timer
+	while((LPC_TIM0->TC)!=(LPC_TIM0->MR0));
+	LPC_TIM0->TCR= (1<<1); //reset timer
+	LPC_TIM0->TCR = ~(1<<0);
+}
+int main()
+{
+timer_init();
+init_lcd();
+	LPC_PINCON->PINSEL4 =(1<<24);
+	//LPC_GPIO2->FIODIR1 =(1<<1);
+	
+	//LPC_SC->EXTINT=(1<<2);
+	LPC_SC->EXTMODE &=~(1<<2);
+	LPC_SC->EXTPOLAR &=~(1<<2);
+	NVIC_EnableIRQ(EINT2_IRQn);
+	char t[7]="TIME = ";
+
+	user_string(t);
+		while(1)
+		{
+			
+		}
+}
+void DisplayTimeToLCD( unsigned int h, unsigned int m, unsigned int s )
+
+{
+	send_cmd(0x87);//send on first line on 7th position
+send_data((h/10)+0X30);
+send_data((h%10)+0X30);
+
+send_data(':');
+
+send_data( (m/10)+0x30 );
+send_data( (m%10)+0x30 );
+send_data(':');
+
+send_data( (s/10)+0x30 );
+send_data( (s%10)+0x30 );
+}
+void EINT2_IRQHandler(void)
+{
+
+	if(flag==0)
+	{	
+	
+counter();
+	
+	}
+	else 
+	{
+	DisplayTimeToLCD(hour,min,sec);	
+		flag=0;
+	}	
+	LPC_SC->EXTINT =(1<<2);
+}
+void counter(void)
+{
+	while(1)
+	{
+		 timer_delay();
+			sec++;
+			if(sec==60)
+				{
+					min++;
+					sec=0;
+				}
+			if(min==60)
+				{
+					hour++;
+					min=0;
+				}
+			if(hour==24)
+				{
+					hour = 0;
+				}
+DisplayTimeToLCD(hour,min,sec);
+				flag=1;
+			}
+}
